@@ -19,7 +19,6 @@ namespace ResourceManagementSystem.API.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
-
             
             modelBuilder.Entity<User>(entity =>
             {

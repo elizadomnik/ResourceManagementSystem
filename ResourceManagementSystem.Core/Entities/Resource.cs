@@ -1,6 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using System.ComponentModel.DataAnnotations.Schema; // Dla ForeignKey
 
 namespace ResourceManagementSystem.Core.Entities
 {
@@ -32,15 +32,14 @@ namespace ResourceManagementSystem.Core.Entities
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
 
-        public Guid? CreatedById { get; set; } 
-        public Guid? LastUpdatedById { get; set; } 
-        
-        // [ForeignKey("CreatedById")]
-        // public virtual User? CreatedBy { get; set; }
+        public Guid? CreatedById { get; set; }
+        [ForeignKey("CreatedById")]
+        public virtual User? CreatedBy { get; set; }
 
-        // [ForeignKey("LastUpdatedById")]
-        // public virtual User? LastUpdatedBy { get; set; }
-        
+        public Guid? LastUpdatedById { get; set; }
+        [ForeignKey("LastUpdatedById")]
+        public virtual User? LastUpdatedBy { get; set; }
+
         [Timestamp]
         public byte[]? RowVersion { get; set; }
     }
