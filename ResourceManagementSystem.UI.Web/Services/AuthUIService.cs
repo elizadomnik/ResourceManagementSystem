@@ -124,7 +124,6 @@ namespace ResourceManagementSystem.UI.Web.Services
                 }
                 catch (HttpRequestException)
                 {
-                    // Ignoruj błąd, jeśli API jest niedostępne, klient i tak się "wyloguje" lokalnie
                 }
             }
             

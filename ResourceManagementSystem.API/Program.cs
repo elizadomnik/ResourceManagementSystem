@@ -58,9 +58,6 @@ builder.Services.AddAuthentication(options =>
 
                 string? tokenFromCookie = context.Request.Cookies["access_token"];
                 
-                Console.WriteLine("Token from cookie: " + tokenFromCookie);
-                Console.WriteLine("Request path: " + context.HttpContext.Request.Path + "");
-                
                 if (!string.IsNullOrEmpty(tokenFromCookie))
                 {
                     context.Token = tokenFromCookie;
@@ -78,13 +75,6 @@ builder.Services.AddAuthentication(options =>
                     }
                 }
                 
-
-                // string? authorizationHeader = context.Request.Headers["Authorization"];
-                // if (!string.IsNullOrEmpty(authorizationHeader) && authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                // {
-                //     context.Token = authorizationHeader.Substring("Bearer ".Length).Trim();
-                // }
-
                 return Task.CompletedTask;
             }
         };

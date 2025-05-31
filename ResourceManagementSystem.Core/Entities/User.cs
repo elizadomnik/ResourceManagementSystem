@@ -28,7 +28,5 @@ namespace ResourceManagementSystem.Core.Entities
 
         [ForeignKey("RoleId")] 
         public virtual Role? Role { get; set; } 
-        
-        // public virtual ICollection<Resource> ManagedResources { get; set; } = new List<Resource>();
     }
 }
