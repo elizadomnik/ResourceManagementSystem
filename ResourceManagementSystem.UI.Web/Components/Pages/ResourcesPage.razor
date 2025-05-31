@@ -1,0 +1,372 @@
+@page "/resources"
+@attribute [StreamRendering]
+@inject ResourceUIService ResourceService
+@inject AuthUIService AuthService
+@inject NavigationManager NavigationManager
+@using ResourceManagementSystem.Core.DTOs.Resource
+@using ResourceManagementSystem.UI.Web.Services
+@implements IDisposable
+
+<PageTitle>Manage Resources</PageTitle>
+
+<h1>Resources</h1>
+
+@if (!AuthService.IsUserLoggedIn())
+{
+    <div class="alert alert-warning">
+        <p class="mb-1"><em>You need to log in to manage resources.</em></p>
+        <button class="btn btn-primary btn-sm" @onclick="NavigateToLogin">Login</button>
+    </div>
+}
+else if (isLoading)
+{
+    <p><em>Loading resources... <span class="spinner-border spinner-border-sm"></span></em></p>
+}
+else
+{
+    <button class="btn btn-success mb-3" @onclick="ShowCreateModal">
+        <span class="bi bi-plus-circle"></span> Create New Resource
+    </button>
+
+    @if (apiErrorMessages.Any())
+    {
+        <div class="alert alert-danger">
+            <strong>Error:</strong>
+            @foreach (var msg in apiErrorMessages)
+            {
+                <p class="mb-0">@msg</p>
+            }
+        </div>
+    }
+
+    @if (resources == null || !resources.Any())
+    {
+        <p><em>No resources found.</em></p>
+    }
+    else
+    {
+        <table class="table table-striped table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Location</th>
+                    <th>Description</th>
+                    <th>Last Updated</th>
+                    <th>Updated By</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var resource in resources)
+                {
+                    <tr>
+                        <td>@resource.Name</td>
+                        <td>@resource.Type</td>
+                        <td>@resource.Location</td>
+                        <td>@resource.Description</td>
+                        <td>@resource.LastUpdatedAt.ToLocalTime().ToString("g")</td>
+                        <td>@resource.LastUpdatedByUsername</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary me-1" title="Edit" @onclick="() => ShowEditModal(resource)">
+                                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M5 19h1.425L16.2 9.225L14.775 7.8L5 17.575zm-1 2q-.425 0-.712-.288T3 20v-2.425q0-.4.15-.763t.425-.637L16.2 3.575q.3-.275.663-.425t.762-.15t.775.15t.65.45L20.425 5q.3.275.437.65T21 6.4q0 .4-.138.763t-.437.662l-12.6 12.6q-.275.275-.638.425t-.762.15zM19 6.4L17.6 5zm-3.525 2.125l-.7-.725L16.2 9.225z"/></svg>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" title="Delete" @onclick="() => PrepareToDelete(resource)">
+                                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16m-10 4v6m4-6v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@if (showModal)
+{
+    <div class="modal fade show" tabindex="-1" style="display:block;" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <EditForm Model="currentResourceModel" OnValidSubmit="HandleSave">
+                    <DataAnnotationsValidator/>
+                    <div class="modal-header">
+                        <h5 class="modal-title">@(isEditing ? "Edit" : "Create") Resource</h5>
+                        <button type="button" class="btn-close" @onclick="CloseModal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (modalErrorMessages.Any())
+                        {
+                             <div class="alert alert-danger">
+                                @foreach(var err in modalErrorMessages) { <p class="mb-0">@err</p> }
+                            </div>
+                        }
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <InputText id="name" class="form-control" @bind-Value="currentResourceModel.Name" />
+                            <ValidationMessage For="@(() => currentResourceModel.Name)" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <InputTextArea id="description" class="form-control" @bind-Value="currentResourceModel.Description" />
+                            <ValidationMessage For="@(() => currentResourceModel.Description)" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Location</label>
+                            <InputText id="location" class="form-control" @bind-Value="currentResourceModel.Location" />
+                            <ValidationMessage For="@(() => currentResourceModel.Location)" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="type" class="form-label">Type</label>
+                            <InputSelect id="type" class="form-select" @bind-Value="currentResourceModel.Type">
+                                @foreach (var typeValue in Enum.GetValues<ResourceManagementSystem.Core.Entities.ResourceType>())
+                                {
+                                    <option value="@typeValue">@typeValue.ToString()</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => currentResourceModel.Type)" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
+                        <button type="submit" class="btn btn-primary" disabled="@isProcessingModal">
+                             @if(isProcessingModal) { <span class="spinner-border spinner-border-sm"></span> }
+                            Save
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (resourceToDelete != null)
+{
+    <div class="modal fade show" tabindex="-1" style="display:block;" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" @onclick="CancelDelete" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete resource "<strong>@resourceToDelete.Name</strong>"?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDelete" disabled="@isProcessingModal">
+                        @if(isProcessingModal) { <span class="spinner-border spinner-border-sm"></span> }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+    private IReadOnlyList<ResourceDto>? resources;
+    private bool showModal = false;
+    private bool isEditing = false;
+    private ResourceFormModel currentResourceModel = new();
+    private Guid editingResourceId;
+
+    private bool isLoading = true; 
+    private List<string> apiErrorMessages = new(); 
+    private List<string> modalErrorMessages = new();
+    private bool isProcessingModal = false;
+
+    private ResourceDto? resourceToDelete = null; // TODO 3: Potwierdzenie usuwania
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthService.AuthStateChanged += HandleAuthStateChanged;
+        ResourceService.ResourcesChanged += OnResourcesChanged;
+
+        if (AuthService.IsUserLoggedIn())
+        {
+            await LoadDataAsync();
+        }
+        else
+        {
+            isLoading = false; 
+        }
+    }
+
+    private async void HandleAuthStateChanged() 
+    {
+        if (AuthService.IsUserLoggedIn())
+        {
+            await LoadDataAsync();
+        }
+        else
+        {
+            resources = null;
+            isLoading = false;
+            apiErrorMessages.Clear();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDataAsync()
+    {
+        isLoading = true;
+        apiErrorMessages.Clear();
+        await InvokeAsync(StateHasChanged); 
+
+        try
+        {
+            
+            await ResourceService.InitializeAsync(); 
+            resources = ResourceService.GetResources();
+        }
+        catch (Exception ex)
+        {
+            apiErrorMessages.Add($"Failed to load resources: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnResourcesChanged()
+    {
+        resources = ResourceService.GetResources();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ShowCreateModal()
+    {
+        isEditing = false;
+        currentResourceModel = new ResourceFormModel(); 
+        modalErrorMessages.Clear();
+        showModal = true;
+    }
+
+    private void ShowEditModal(ResourceDto resourceToEdit)
+    {
+        isEditing = true;
+        editingResourceId = resourceToEdit.Id;
+        currentResourceModel = new ResourceFormModel
+        {
+            Name = resourceToEdit.Name,
+            Description = resourceToEdit.Description,
+            Location = resourceToEdit.Location,
+            Type = resourceToEdit.Type
+        };
+        modalErrorMessages.Clear();
+        showModal = true;
+    }
+
+    private void CloseModal()
+    {
+        showModal = false;
+        currentResourceModel = new(); 
+    }
+
+    private async Task HandleSave()
+    {
+        isProcessingModal = true;
+        modalErrorMessages.Clear();
+        try
+        {
+            if (isEditing)
+            {
+                var updateDto = new UpdateResourceDto 
+                {
+                    Name = currentResourceModel.Name,
+                    Description = currentResourceModel.Description,
+                    Location = currentResourceModel.Location,
+                    Type = currentResourceModel.Type
+                };
+                await ResourceService.UpdateResourceAsync(editingResourceId, updateDto);
+            }
+            else
+            {
+                var createDto = new CreateResourceDto
+                {
+                    Name = currentResourceModel.Name,
+                    Description = currentResourceModel.Description,
+                    Location = currentResourceModel.Location,
+                    Type = currentResourceModel.Type
+                };
+                await ResourceService.CreateResourceAsync(createDto);
+            }
+            CloseModal(); 
+        }
+        catch (HttpRequestException httpEx)
+        {
+            modalErrorMessages.Add($"API Error: {httpEx.Message}");
+            if (httpEx.StatusCode.HasValue) modalErrorMessages.Add($"Status Code: {httpEx.StatusCode.Value}");
+        }
+        catch (Exception ex)
+        {
+            modalErrorMessages.Add($"An unexpected error occurred: {ex.Message}");
+        }
+        finally
+        {
+            isProcessingModal = false;
+        }
+    }
+
+    private void PrepareToDelete(ResourceDto resource) 
+    {
+        resourceToDelete = resource;
+    }
+
+    private void CancelDelete() 
+    {
+        resourceToDelete = null;
+    }
+
+    private async Task ConfirmDelete() 
+    {
+        if (resourceToDelete == null) return;
+
+        isProcessingModal = true;
+        apiErrorMessages.Clear(); 
+        try
+        {
+            await ResourceService.DeleteResourceAsync(resourceToDelete.Id);
+        }
+        catch (Exception ex)
+        {
+            apiErrorMessages.Add($"You dont' have permission to delete resources.");
+        }
+        finally
+        {
+            resourceToDelete = null;
+            isProcessingModal = false;
+        }
+    }
+    
+    private void NavigateToLogin()
+    {
+        NavigationManager.NavigateTo("/login");
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthStateChanged -= HandleAuthStateChanged;
+        ResourceService.ResourcesChanged -= OnResourcesChanged;
+    }
+
+    public class ResourceFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Description { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(100)]
+        public string? Location { get; set; }
+
+        public ResourceManagementSystem.Core.Entities.ResourceType Type { get; set; } = ResourceManagementSystem.Core.Entities.ResourceType.Other;
+    }
+}

@@ -1,13 +1,28 @@
 ﻿@inherits LayoutComponentBase
+@inject AuthUIService AuthService
+@inject LocalStorageService LocalStorageService
+@inject NavigationManager NavigationManager
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using ResourceManagementSystem.UI.Web.Services
+@inject ProtectedLocalStorage ProtectedLocalStore
+@implements IDisposable 
 
 <div class="page">
     <div class="sidebar">
-        <NavMenu/>
+        <NavMenu />
     </div>
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            @if (AuthService.IsUserLoggedIn())
+            {
+                <span class="me-3">Welcome, @AuthService.CurrentUsername!</span>
+                <a href="#" @onclick="HandleLogout" @onclick:preventDefault>Logout</a>
+            }
+            else
+            {
+                <a href="/login">Login</a>
+            }
         </div>
 
         <article class="content px-4">
@@ -21,3 +36,41 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private string value = "";
+    protected override void OnInitialized()
+    {
+        AuthService.AuthStateChanged += OnAuthStateChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        Console.WriteLine("OnAfterRenderAsync called FirstRender");
+        if (firstRender)
+        {
+            Console.WriteLine("OnAfterRenderAsync called FirstRender");
+
+            value = AuthService.IsUserLoggedIn() == true ? "true" : "false";
+            
+            await AuthService.InitializeAuthStateAsync();
+            
+        }
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        NavigationManager.NavigateTo("/");
+    }
+
+    private void OnAuthStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AuthService.AuthStateChanged -= OnAuthStateChanged;
+    }
+}

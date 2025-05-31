@@ -16,6 +16,7 @@ namespace ResourceManagementSystem.API.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ResourceHub> _resourceHubContext;
+        
 
         public ResourceService(ApplicationDbContext context, IHubContext<ResourceHub> resourceHubContext)
         {
@@ -90,7 +91,7 @@ namespace ResourceManagementSystem.API.Services
             {
                 await _context.SaveChangesAsync();
                 var createdResourceDto = await GetResourceByIdAsync(resource.Id);
-                if (createdResourceDto != null) // Upewnij się, że DTO nie jest null
+                if (createdResourceDto != null)
                 {
                     await _resourceHubContext.Clients.All.SendAsync("ReceiveResourceCreated", createdResourceDto);
                 }
