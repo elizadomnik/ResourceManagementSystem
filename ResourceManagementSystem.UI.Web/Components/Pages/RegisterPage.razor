@@ -1,0 +1,123 @@
+@page "/register"
+@using ResourceManagementSystem.Core.DTOs.User
+@using ResourceManagementSystem.UI.Web.Services
+@rendermode InteractiveServer
+@inject AuthUIService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Register</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+    <div class="card shadow-sm">
+    <div class="card-body">
+        <h3 class="card-title text-center mb-4">Register</h3>
+
+        @if (errors.Any())
+        {
+            <div class="alert alert-danger">
+                @foreach (var error in errors)
+                {
+                <p class="mb-0">@error</p>
+            }
+        </div>
+        }
+
+        <EditForm Model="registerModel" OnValidSubmit="HandleRegister">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <InputText id="username" class="form-control" @bind-Value="registerModel.Username" placeholder="Choose a username" />
+                <ValidationMessage For="@(() => registerModel.Username)" />
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <InputText id="email" class="form-control" @bind-Value="registerModel.Email" placeholder="Enter your email" />
+                <ValidationMessage For="@(() => registerModel.Email)" />
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <InputText id="password" type="password" class="form-control" @bind-Value="registerModel.Password" placeholder="Create a password" />
+                <ValidationMessage For="@(() => registerModel.Password)" />
+            </div>
+            <div class="mb-3">
+                <label for="confirmPassword" class="form-label">Confirm Password</label>
+                <InputText id="confirmPassword" type="password" class="form-control" @bind-Value="registerModel.ConfirmPassword" placeholder="Confirm your password" />
+                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
+            </div>
+            <div class="d-grid">
+                <button type="submit" class="btn btn-primary" disabled="@isProcessing">
+                    @if(isProcessing)
+                    {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    }
+                    else
+                    {
+                        @:Register
+                    }
+                </button>
+            </div>
+        </EditForm>
+        <p class="mt-3 text-center">
+            Already have an account? <a href="/login">Login here</a>
+        </p>
+    </div>
+    </div>
+    </div>
+</div>
+
+@code {
+private RegisterViewModel registerModel = new();
+private List<string> errors = new();
+private bool isProcessing = false;
+
+private async Task HandleRegister()
+{
+isProcessing = true;
+        errors.Clear();
+        if (registerModel.Password != registerModel.ConfirmPassword)
+{
+ errors.Add("Passwords do not match.");
+            isProcessing = false;
+            return;
+        }
+
+var dto = new UserRegisterDto
+{
+Username = registerModel.Username,
+Email = registerModel.Email,
+Password = registerModel.Password
+};
+
+        var result = await AuthService.RegisterAsync(dto);
+        if (result.Succeeded)
+{
+NavigationManager.NavigateTo("/resources"); 
+        }
+                                            else
+    {
+    if (result.Errors != null) errors.AddRange(result.Errors);
+}
+isProcessing = false;
+}
+
+    public class RegisterViewModel
+{
+[System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 3)]
+public string Username { get; set; } = string.Empty;
+
+[System.ComponentModel.DataAnnotations.Required]
+[System.ComponentModel.DataAnnotations.EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+[System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 6)]
+public string Password { get; set; } = string.Empty;
+
+[System.ComponentModel.DataAnnotations.Required]
+[System.ComponentModel.DataAnnotations.Compare(nameof(Password), ErrorMessage = "Passwords do not match.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+}
+}

@@ -15,7 +15,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(MyAllowSpecificOrigins, policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5115")
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -26,9 +26,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 
-
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IResourceService, ResourceService>();
+builder.Services.AddSingleton<IRabbitMQProducerService, RabbitMQProducerService>();
 
 
 //Auth config
@@ -54,14 +55,35 @@ builder.Services.AddAuthentication(options =>
         {
             OnMessageReceived = context =>
             {
-                var accessToken = context.Request.Query["access_token"];
 
-                var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) &&
-                    (path.StartsWithSegments("/Hubs/Resource")))
+                string? tokenFromCookie = context.Request.Cookies["access_token"];
+                
+                Console.WriteLine("Token from cookie: " + tokenFromCookie);
+                Console.WriteLine("Request path: " + context.HttpContext.Request.Path + "");
+                
+                if (!string.IsNullOrEmpty(tokenFromCookie))
                 {
-                    context.Token = accessToken;
+                    context.Token = tokenFromCookie;
+                    return Task.CompletedTask;
                 }
+                
+                var path = context.HttpContext.Request.Path;
+
+                if (path.StartsWithSegments("/Hubs/Resource"))
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(accessToken))
+                    {
+                        context.Token = accessToken;
+                    }
+                }
+                
+
+                // string? authorizationHeader = context.Request.Headers["Authorization"];
+                // if (!string.IsNullOrEmpty(authorizationHeader) && authorizationHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                // {
+                //     context.Token = authorizationHeader.Substring("Bearer ".Length).Trim();
+                // }
 
                 return Task.CompletedTask;
             }
@@ -113,7 +135,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// app.UseHttpsRedirection();
 
 app.UseCors(MyAllowSpecificOrigins);
 

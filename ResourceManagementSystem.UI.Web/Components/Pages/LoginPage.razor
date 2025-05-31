@@ -1,0 +1,81 @@
+@page "/login"
+@using ResourceManagementSystem.Core.DTOs.User
+@using ResourceManagementSystem.UI.Web.Services
+@rendermode InteractiveServer
+@inject AuthUIService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Login</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h3 class="card-title text-center mb-4">Login</h3>
+
+                @if (errors.Any())
+                {
+                    <div class="alert alert-danger">
+                        @foreach (var error in errors)
+                        {
+                            <p class="mb-0">@error</p>
+                        }
+                    </div>
+                }
+
+                <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                    <DataAnnotationsValidator />
+                    
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email</label>
+                        <InputText id="email" class="form-control" @bind-Value="loginModel.Email" placeholder="Enter your email" />
+                        <ValidationMessage For="@(() => loginModel.Email)" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <InputText id="password" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Enter your password" />
+                        <ValidationMessage For="@(() => loginModel.Password)" />
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" disabled="@isProcessing">
+                            @if(isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                <span class="visually-hidden">Loading...</span>
+                            }
+                            else
+                            {
+                                @:Login
+                            }
+                        </button>
+                    </div>
+                </EditForm>
+                <p class="mt-3 text-center">
+                    Don't have an account? <a href="/register">Register here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserLoginDto loginModel = new();
+    private List<string> errors = new();
+    private bool isProcessing = false;
+
+    private async Task HandleLogin()
+    {
+        isProcessing = true;
+        errors.Clear();
+        var result = await AuthService.LoginAsync(loginModel);
+        if (result.Succeeded)
+        {
+            NavigationManager.NavigateTo("/resources");
+        }
+        else
+        {
+            if (result.Errors != null) errors.AddRange(result.Errors);
+        }
+        isProcessing = false;
+    }
+}

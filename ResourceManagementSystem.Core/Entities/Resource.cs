@@ -6,9 +6,13 @@ namespace ResourceManagementSystem.Core.Entities
 {
     public enum ResourceType
     {
+        Laptop,
+        Peripheral,
+        Cable,
+        Document,
+        Software,
         Hardware,
-        Room,
-        ProjectData,
+        Tool,
         Other
     }
 
