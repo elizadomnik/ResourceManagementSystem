@@ -1,4 +1,4 @@
-using ResourceManagementSystem.Core.Entities; // Dla ResourceType
+using ResourceManagementSystem.Core.Entities;
 using System;
 
 namespace ResourceManagementSystem.Core.DTOs.Resource

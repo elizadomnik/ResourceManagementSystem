@@ -125,7 +125,7 @@ namespace ResourceManagementSystem.API.Tests.Controllers
         public async Task CreateResource_InvalidModel_ReturnsBadRequestObjectResult()
         {
             // Arrange
-            var createDto = new CreateResourceDto { Name = "" }; // Pusta nazwa, nieprawidłowy model
+            var createDto = new CreateResourceDto { Name = "" };
             _controller.ModelState.AddModelError("Name", "The Name field is required.");
 
             // Act

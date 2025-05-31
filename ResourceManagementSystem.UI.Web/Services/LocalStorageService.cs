@@ -22,7 +22,6 @@ namespace ResourceManagementSystem.UI.Web.Services
         public async Task<T?> GetItemAsync<T>(string key)
         {
             var jsonValue = await _jsRuntime.InvokeAsync<string?>("localStorage.getItem", key);
-            Console.WriteLine("KEY" + key + " " + jsonValue);
             if (string.IsNullOrEmpty(jsonValue))
             {
                 return default;
