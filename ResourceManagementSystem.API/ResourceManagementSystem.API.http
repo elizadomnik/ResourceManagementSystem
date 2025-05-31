@@ -1,6 +1,0 @@
-@ResourceManagementSystem.API_HostAddress = http://localhost:5003
-
-GET {{ResourceManagementSystem.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
