@@ -16,12 +16,15 @@ namespace ResourceManagementSystem.API.Services
     {
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ResourceHub> _resourceHubContext;
+        private readonly IRabbitMQProducerService _rabbitMQProducer;
+        private const string ResourceExchangeName = "resource.events";
         
 
-        public ResourceService(ApplicationDbContext context, IHubContext<ResourceHub> resourceHubContext)
+        public ResourceService(ApplicationDbContext context, IHubContext<ResourceHub> resourceHubContext, IRabbitMQProducerService rabbitMQProducer)
         {
             _context = context;
             _resourceHubContext = resourceHubContext;
+            _rabbitMQProducer = rabbitMQProducer;
         }
 
         public async Task<IEnumerable<ResourceDto>> GetAllResourcesAsync()
@@ -94,6 +97,7 @@ namespace ResourceManagementSystem.API.Services
                 if (createdResourceDto != null)
                 {
                     await _resourceHubContext.Clients.All.SendAsync("ReceiveResourceCreated", createdResourceDto);
+                    _rabbitMQProducer.PublishMessage(ResourceExchangeName, "resource.created", createdResourceDto);
                 }
                 return (true, createdResourceDto, Array.Empty<string>());
             }
@@ -127,6 +131,8 @@ namespace ResourceManagementSystem.API.Services
                 if (updatedResourceDto != null)
                 {
                     await _resourceHubContext.Clients.All.SendAsync("ReceiveResourceUpdate", updatedResourceDto);
+                    _rabbitMQProducer.PublishMessage(ResourceExchangeName, $"resource.updated.{resource.Id}",
+                        updatedResourceDto);
                 }
                 return (true, updatedResourceDto, Array.Empty<string>());
             }
@@ -148,12 +154,17 @@ namespace ResourceManagementSystem.API.Services
             {
                 return (false, new[] { "Resource not found." });
             }
+            
+            var resourceIdForMessage = resource.Id;
+            var resourceNameForMessage = resource.Name; 
 
             _context.Resources.Remove(resource);
             try
             {
                 await _context.SaveChangesAsync();
                 await _resourceHubContext.Clients.All.SendAsync("ReceiveResourceDeleted", id);
+                _rabbitMQProducer.PublishMessage(ResourceExchangeName, $"resource.deleted.{resourceIdForMessage}", 
+                    new { ResourceId = resourceIdForMessage, Name = resourceNameForMessage, DeletedBy = userId, DeletedAt = DateTime.UtcNow });
                 return (true, Array.Empty<string>());
             }
             catch (DbUpdateException ex)
