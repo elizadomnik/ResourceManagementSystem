@@ -132,7 +132,7 @@ namespace ResourceManagementSystem.UI.Web.Services
         {
             if (!_isAuthenticated)
             {
-                if (_resources.Any()) // Wyczyść tylko jeśli coś jest
+                if (_resources.Any())
                 {
                     _resources.Clear();
                     NotifyStateChanged();
